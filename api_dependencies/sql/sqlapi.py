@@ -54,6 +54,17 @@ def query_all(li, start: int = 0, end: int = -1, rule: str = "updated"):
     active_num = session.query(Friend).filter_by(error=False).count()
     error_num = friends_num - active_num
 
+    all_friends = session.query(Friend).all()
+    friends_error = []
+    for friend in all_friends:
+        if friend.error:
+            item = {
+                'name': friend.name,
+                'link': friend.link,
+                'avatar': friend.avatar
+            }
+            friends_error.append(item)
+
     data = {}
     data['statistical_data'] = {
         'friends_num': friends_num,
@@ -71,6 +82,7 @@ def query_all(li, start: int = 0, end: int = -1, rule: str = "updated"):
         post_data.append(item)
     session.close()
     data['article_data'] = post_data
+    data['friends_error'] = friends_error
     return data
 
 

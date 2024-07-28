@@ -19,7 +19,7 @@ def server_deploy(port):
     BASE_PATH=$(cd $(dirname $0); pwd)
     export BASE_PATH
     export PYTHONPATH=${PYTHONPATH}:${BASE_PATH}
-    pip3 install -r ${BASE_PATH}/hexo_circle_of_friends/requirements.txt -i https://pypi.douban.com/simple/
+    pip3 install -r ${BASE_PATH}/hexo_circle_of_friends/requirements.txt -i https://mirrors.tencent.com/pypi/simple/
     """
     if os.path.exists("env.json"):
         with open("env.json", "r") as f:
