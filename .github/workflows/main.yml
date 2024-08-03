@@ -77,6 +77,11 @@ jobs:
       run: |
         python ./hexo_circle_of_friends/run.py
 
+    - name: Stash unstaged changes
+      if: ${{ env.STORAGE_TYPE == 'sqlite' }}
+      run: |
+        git stash
+
     - name: Resolve merge conflicts
       if: ${{ env.STORAGE_TYPE == 'sqlite' }}
       run: |
@@ -84,6 +89,7 @@ jobs:
         git config --global user.email "${{ env.GITHUB_EMAIL }}"
         git pull --rebase
         git merge --strategy-option theirs
+        git stash pop  # 恢复未暂存的更改
         git add data.db
         git commit -m "Resolved merge conflicts"
 
