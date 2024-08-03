@@ -9,27 +9,20 @@ on:
   workflow_dispatch:
 
 env:
-  # 在这里查看需要添加的secert
-  # 通用配置
-  SIMPLE_MODE: false # 极简模式是否开启
-  STORAGE_TYPE: ${{ secrets.STORAGE_TYPE }} # 请修改为你的存储方式，默认为leancloud
-  PROXY: ${{ secrets.PROXY }} # 可选，http代理
-  # leancloud、mysql、sqlite、mongodb配置四选一即可
-  # leancloud配置
+  SIMPLE_MODE: false
+  STORAGE_TYPE: ${{ secrets.STORAGE_TYPE }}
+  PROXY: ${{ secrets.PROXY }}
   APPID: ${{ secrets.APPID }}
   APPKEY: ${{ secrets.APPKEY }}
-  # mysql配置
-  MYSQL_USERNAME: ${{ secrets.MYSQL_USERNAME }} # 登录用户名
-  MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }} # 登录密码
-  MYSQL_IP: ${{ secrets.MYSQL_IP }} # 数据库IP地址
-  MYSQL_PORT: ${{ secrets.MYSQL_PORT }} # 数据库端口号
-  MYSQL_DB: ${{ secrets.MYSQL_DB }} # 要连接到的库的名称
-  # sqlite配置，用于将db文件上传到github仓库
-  GITHUB_NAME: ${{ secrets.GH_NAME }} # 你的github昵称
-  GITHUB_EMAIL: ${{ secrets.GH_EMAIL }} # 你的github邮箱
-  GITHUB_TOKEN: ${{ secrets.GH_TOKEN }} # github token
-  # mongodb配置
-  MONGODB_URI: ${{ secrets.MONGODB_URI }}  # mongodb URI 支持'mongodb://'和'mongodb+srv://'
+  MYSQL_USERNAME: ${{ secrets.MYSQL_USERNAME }}
+  MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+  MYSQL_IP: ${{ secrets.MYSQL_IP }}
+  MYSQL_PORT: ${{ secrets.MYSQL_PORT }}
+  MYSQL_DB: ${{ secrets.MYSQL_DB }}
+  GITHUB_NAME: ${{ secrets.GH_NAME }}
+  GITHUB_EMAIL: ${{ secrets.GH_EMAIL }}
+  GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+  MONGODB_URI: ${{ secrets.MONGODB_URI }}
   TZ: Asia/Shanghai
 
 jobs:
@@ -84,6 +77,16 @@ jobs:
       run: |
         python ./hexo_circle_of_friends/run.py
 
+    - name: Resolve merge conflicts
+      if: ${{ env.STORAGE_TYPE == 'sqlite' }}
+      run: |
+        git config --global user.name "${{ env.GITHUB_NAME }}"
+        git config --global user.email "${{ env.GITHUB_EMAIL }}"
+        git pull --rebase
+        git merge --strategy-option theirs
+        git add data.db
+        git commit -m "Resolved merge conflicts"
+
     - name: Push sqlite data # sqlite push
       if: ${{ env.STORAGE_TYPE == 'sqlite' }}
       uses: github-actions-x/commit@v2.9
@@ -92,6 +95,7 @@ jobs:
         commit-message: "Update data.db"
         files: data.db
         rebase: 'true'
+        force-push: 'true'  # 强制推送
         name: ${{ env.GITHUB_NAME }}
         email: ${{ env.GITHUB_EMAIL }}
 
@@ -120,4 +124,4 @@ jobs:
         email: github-actions@noreply.github.com
 
     - name: keep alive
-      uses: gautamkrishnar/keepalive-workflow@master # keep workflows from being suspended when no commit for a long time
+      uses: gautamkrishnar/keepalive-workflow@master
