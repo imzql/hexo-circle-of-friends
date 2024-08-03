@@ -18,6 +18,7 @@ class SQLPipeline:
     def __init__(self):
         self.userdata = []
         self.nonerror_data = set()  # 能够根据友链link获取到文章的人
+        self.err_list = []
 
     def open_spider(self, spider):
         settings = spider.settings
@@ -87,19 +88,22 @@ class SQLPipeline:
 
         return item
 
-    def close_spider(self, spider):
-        # print(self.nonerror_data)
-        # print(self.userdata)
-        settings = spider.settings
-        self.friendlist_push(settings)
-        self.outdate_clean(settings["OUTDATE_CLEAN"])
-        logger.info("----------------------")
-        logger.info("友链总数 : %d" % self.session.query(models.Friend).count())
-        logger.info("失联友链数 : %d" % self.session.query(models.Friend).filter_by(error=True).count())
-        logger.info("共 %d 篇文章" % self.session.query(models.Post).count())
 
-        logger.info("最后运行于：%s" % today)
-        logger.info("done!")
+def close_spider(self, spider):
+    # print(self.nonerror_data)
+    # print(self.userdata)
+    settings = spider.settings
+    self.friendlist_push(settings)
+    self.outdate_clean(settings["OUTDATE_CLEAN"])
+    logger.info("----------------------")
+    logger.info("友链总数 : %d" % self.session.query(models.Friend).count())
+    logger.info("失联友链数 : %d" % self.session.query(models.Friend).filter_by(error=True).count())
+    logger.info("共 %d 篇文章" % self.session.query(models.Post).count())
+    logger.info("最后运行于：%s" % today)
+    self.sendmessage(str(self.session.query(models.Friend).count()),
+                     str(self.session.query(models.Friend).filter_by(error=True).count()),
+                     str(self.session.query(models.Post).count()), str(today), self.err_list)
+    logger.info("done!")
 
     def query_post(self):
         try:
@@ -128,29 +132,61 @@ class SQLPipeline:
         # print('-------结束删除规则----------')
 
     def friendlist_push(self, settings):
-        for user in self.userdata:
-            friend = models.Friend(
-                name=user[0],
-                link=user[1],
-                avatar=user[2]
-            )
-            if user[0] in self.nonerror_data:
-                # print("未失联的用户")
-                friend.error = False
-            elif settings["BLOCK_SITE"]:
-                error = True
-                for url in settings["BLOCK_SITE"]:
-                    if re.match(url, friend.link):
-                        friend.error = False
-                        error = False
-                if error:
-                    logger.error("请求失败，请检查链接： %s" % friend.link)
-                    friend.error = True
-            else:
+    for user in self.userdata:
+        friend = models.Friend(
+            name=user[0],
+            link=user[1],
+            avatar=user[2]
+        )
+        if user[0] in self.nonerror_data:
+            # print("未失联的用户")
+            friend.error = False
+        elif settings["BLOCK_SITE"]:
+            error = True
+            for url in settings["BLOCK_SITE"]:
+                if re.match(url, friend.link):
+                    friend.error = False
+                    error = False
+            if error:
                 logger.error("请求失败，请检查链接： %s" % friend.link)
                 friend.error = True
-            self.session.add(friend)
-            self.session.commit()
+        else:
+            logger.error("请求失败，请检查链接： %s" % friend.link)
+            friend.error = True
+            self.err_list.append(friend.link)
+        self.session.add(friend)
+        self.session.commit()
+
+    
+def sendmessage(self, linktotal, errtotal, posttotal, todaytime, failed_links):
+    timestamp = str(round(time.time() * 1000))
+    secret = 'SEC291556f0a155ed9df1ce38835a883245a52e462b9e961bf24ac08d03b6071dd2'
+    secret_enc = secret.encode('utf-8')
+    string_to_sign = '{}\n{}'.format(timestamp, secret)
+    string_to_sign_enc = string_to_sign.encode('utf-8')
+    hmac_code = hmac.new(secret_enc, string_to_sign_enc, digestmod=hashlib.sha256).digest()
+    sign = urllib.parse.quote_plus(base64.b64encode(hmac_code))
+    webhook_url = 'https://oapi.dingtalk.com/robot/send?access_token=9786beb334803afcc404ad4b19a6c32997c7d1e91ae29a0cbfcc59edfb33660f&timestamp=' + timestamp + '&sign=' + sign + ''
+    headers = {'Content-Type': 'application/json'}
+    text_content = (
+        "### 友链总数: {}\n"
+        "### 失联友链: {}\n"
+        "### 总文章: {}\n"
+        "### 运行时间: {}\n\n"
+        "{}"
+    ).format(linktotal, errtotal, posttotal, todaytime,
+             "" if not failed_links else '### 请求失败的链接:\n' + '\n'.join(
+                 [f'- [{link}]({link})' for link in failed_links]))
+
+    data = {
+        "msgtype": "markdown",
+        "markdown": {
+            "title": "朋友圈监控",
+            "text": text_content
+        }
+    }
+
+    r = requests.post(webhook_url, headers=headers, data=json.dumps(data))
 
     def friendpoor_push(self, item):
         post = models.Post(
