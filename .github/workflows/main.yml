@@ -30,10 +30,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@main
+      uses: actions/checkout@v3
 
     - name: Set up Python
-      uses: actions/setup-python@main
+      uses: actions/setup-python@v3
       with:
         python-version: 3.11
         cache: "pip"
@@ -81,17 +81,10 @@ jobs:
       if: ${{ env.STORAGE_TYPE == 'sqlite' }}
       run: |
         git stash
-
-    - name: Resolve merge conflicts
-      if: ${{ env.STORAGE_TYPE == 'sqlite' }}
-      run: |
-        git config --global user.name "${{ env.GITHUB_NAME }}"
-        git config --global user.email "${{ env.GITHUB_EMAIL }}"
         git pull --rebase
-        git merge --strategy-option theirs
-        git stash pop  # 恢复未暂存的更改
+        git stash pop
         git add data.db
-        git commit -m "Resolved merge conflicts"
+        git commit -m "Resolved merge conflicts" || true
 
     - name: Push sqlite data # sqlite push
       if: ${{ env.STORAGE_TYPE == 'sqlite' }}
@@ -101,7 +94,7 @@ jobs:
         commit-message: "Update data.db"
         files: data.db
         rebase: 'true'
-        force-push: 'true'  # 强制推送
+        force-push: 'false'
         name: ${{ env.GITHUB_NAME }}
         email: ${{ env.GITHUB_EMAIL }}
 
