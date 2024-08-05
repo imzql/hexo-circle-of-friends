@@ -82,11 +82,11 @@ jobs:
       run: |
         python ./hexo_circle_of_friends/run.py
 
-    - name: Remove existing data.db
+    - name: Force remove data.db
       if: ${{ env.STORAGE_TYPE == 'sqlite' }}
       run: |
-        git rm data.db || echo "No data.db file to remove"
-        git commit -m "Remove data.db before generating a new one" || echo "No changes to commit"
+        git rm -f data.db || echo "No data.db file to remove"
+        git commit -m "Force remove data.db before generating a new one" || echo "No changes to commit"
         git push origin main
 
     - name: Stash unstaged changes
@@ -97,6 +97,7 @@ jobs:
         git stash pop || echo "No stash entries found"
         git add data.db
         git commit -m "Resolved merge conflicts and updated data.db" || echo "No changes to commit"
+        git push origin main
 
     - name: Push new data.db
       if: ${{ env.STORAGE_TYPE == 'sqlite' }}
