@@ -47,6 +47,11 @@ jobs:
       run: |
         echo "BASE_PATH=$(pwd)" >> $GITHUB_ENV && echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
 
+    - name: Configure Git identity
+      run: |
+        git config --global user.name "${{ env.GITHUB_NAME }}"
+        git config --global user.email "${{ env.GITHUB_EMAIL }}"
+
     - name: leancloud Update posts
       if: ${{ env.STORAGE_TYPE == 'leancloud' }}
       env:
@@ -132,11 +137,6 @@ jobs:
     - name: Set correct permissions for .git directory
       run: |
         sudo chown -R $USER:$USER .git
-
-    - name: Configure Git identity
-      run: |
-        git config --global user.name "${{ env.GITHUB_NAME }}"
-        git config --global user.email "${{ env.GITHUB_EMAIL }}"
 
     - name: Trigger redeploy on Vercel
       run: |
