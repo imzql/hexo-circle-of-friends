@@ -85,19 +85,27 @@ jobs:
     - name: Force remove data.db
       if: ${{ env.STORAGE_TYPE == 'sqlite' }}
       run: |
-        git rm -f data.db || echo "No data.db file to remove"
-        git commit -m "Force remove data.db before generating a new one" || echo "No changes to commit"
-        git push origin main
+        if [ -f data.db ]; then
+          git rm -f data.db
+          git commit -m "Force remove data.db before generating a new one" || echo "No changes to commit"
+          git push origin main
+        else
+          echo "data.db does not exist"
+        fi
 
     - name: Stash unstaged changes
       if: ${{ env.STORAGE_TYPE == 'sqlite' }}
       run: |
-        git stash
-        git pull --rebase
-        git stash pop || echo "No stash entries found"
-        git add data.db
-        git commit -m "Resolved merge conflicts and updated data.db" || echo "No changes to commit"
-        git push origin main
+        if [ -n "$(git status --porcelain)" ]; then
+          git stash
+          git pull --rebase
+          git stash pop || echo "No stash entries found"
+          git add data.db
+          git commit -m "Resolved merge conflicts and updated data.db" || echo "No changes to commit"
+          git push origin main
+        else
+          echo "No changes to stash"
+        fi
 
     - name: Push new data.db
       if: ${{ env.STORAGE_TYPE == 'sqlite' }}
