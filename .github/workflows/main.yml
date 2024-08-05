@@ -9,50 +9,52 @@ on:
   workflow_dispatch:
 
 env:
-  SIMPLE_MODE: false
-  STORAGE_TYPE: ${{ secrets.STORAGE_TYPE }}
-  PROXY: ${{ secrets.PROXY }}
+  # 在这里查看需要添加的secert
+  # 通用配置
+  SIMPLE_MODE: false # 极简模式是否开启
+  STORAGE_TYPE: ${{ secrets.STORAGE_TYPE }} # 请修改为你的存储方式，默认为leancloud
+  PROXY: ${{ secrets.PROXY }} # 可选，http代理
+  # leancloud、mysql、sqlite、mongodb配置四选一即可
+  # leancloud配置
   APPID: ${{ secrets.APPID }}
   APPKEY: ${{ secrets.APPKEY }}
-  MYSQL_USERNAME: ${{ secrets.MYSQL_USERNAME }}
-  MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
-  MYSQL_IP: ${{ secrets.MYSQL_IP }}
-  MYSQL_PORT: ${{ secrets.MYSQL_PORT }}
-  MYSQL_DB: ${{ secrets.MYSQL_DB }}
-  GITHUB_NAME: ${{ secrets.GH_NAME }}
-  GITHUB_EMAIL: ${{ secrets.GH_EMAIL }}
-  GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-  MONGODB_URI: ${{ secrets.MONGODB_URI }}
+  # mysql配置
+  MYSQL_USERNAME: ${{ secrets.MYSQL_USERNAME }} # 登录用户名
+  MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }} # 登录密码
+  MYSQL_IP: ${{ secrets.MYSQL_IP }} # 数据库IP地址
+  MYSQL_PORT: ${{ secrets.MYSQL_PORT }} # 数据库端口号
+  MYSQL_DB: ${{ secrets.MYSQL_DB }} # 要连接到的库的名称
+  # sqlite配置，用于将db文件上传到github仓库
+  GITHUB_NAME: ${{ secrets.GH_NAME }} # 你的github昵称
+  GITHUB_EMAIL: ${{ secrets.GH_EMAIL }} # 你的github邮箱
+  GITHUB_TOKEN: ${{ secrets.GH_TOKEN }} # github token
+  # mongodb配置
+  MONGODB_URI: ${{ secrets.MONGODB_URI }}  # mongodb URI 支持'mongodb://'和'mongodb+srv://'
   TZ: Asia/Shanghai
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+    - name: Checkout
+      uses: actions/checkout@main
 
-    - name: Set up Python environment
-      uses: actions/setup-python@v3
+    - name: Set up Python
+      uses: actions/setup-python@main
       with:
         python-version: 3.11
         cache: "pip"
 
-    - name: Install dependencies
+    - name: Install requirements
       working-directory: ./hexo_circle_of_friends
       run: |
         pip install -r requirements.txt
 
-    - name: Set environment variables
+    - name: set env
       run: |
         echo "BASE_PATH=$(pwd)" >> $GITHUB_ENV && echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
 
-    - name: Configure Git identity
-      run: |
-        git config --global user.name "${{ env.GITHUB_NAME }}"
-        git config --global user.email "${{ env.GITHUB_EMAIL }}"
-
-    - name: leancloud Update posts
+    - name: leancloud Update posts # leancloud
       if: ${{ env.STORAGE_TYPE == 'leancloud' }}
       env:
         APPID: ${{ secrets.APPID }}
@@ -63,7 +65,7 @@ jobs:
       run: |
         python run.py
 
-    - name: mysql Update posts
+    - name: mysql Update posts # mysql
       if: ${{ env.STORAGE_TYPE == 'mysql' }}
       env:
         MYSQL_USERNAME: ${{ secrets.MYSQL_USERNAME }}
@@ -74,7 +76,7 @@ jobs:
       run: |
         python run.py
 
-    - name: sqlite Update posts
+    - name: sqlite Update posts # sqlite
       if: ${{ env.STORAGE_TYPE == 'sqlite' || env.SIMPLE_MODE == 'true' }}
       env:
         PYTHONPATH: ${{ env.PYTHONPATH }}
@@ -82,32 +84,7 @@ jobs:
       run: |
         python ./hexo_circle_of_friends/run.py
 
-    - name: Force remove data.db
-      if: ${{ env.STORAGE_TYPE == 'sqlite' }}
-      run: |
-        if [ -f data.db ]; then
-          git rm -f data.db
-          git commit -m "Force remove data.db before generating a new one" || echo "No changes to commit"
-          git push origin main
-        else
-          echo "data.db does not exist"
-        fi
-
-    - name: Stash unstaged changes
-      if: ${{ env.STORAGE_TYPE == 'sqlite' }}
-      run: |
-        if [ -n "$(git status --porcelain)" ]; then
-          git stash
-          git pull --rebase
-          git stash pop || echo "No stash entries found"
-          git add data.db
-          git commit -m "Resolved merge conflicts and updated data.db" || echo "No changes to commit"
-          git push origin main
-        else
-          echo "No changes to stash"
-        fi
-
-    - name: Push new data.db
+    - name: Push sqlite data # sqlite push
       if: ${{ env.STORAGE_TYPE == 'sqlite' }}
       uses: github-actions-x/commit@v2.9
       with:
@@ -115,11 +92,10 @@ jobs:
         commit-message: "Update data.db"
         files: data.db
         rebase: 'true'
-        force-push: 'false'
         name: ${{ env.GITHUB_NAME }}
         email: ${{ env.GITHUB_EMAIL }}
 
-    - name: mongodb Update posts
+    - name: mongodb Update posts # mongodb
       if: ${{ env.STORAGE_TYPE == 'mongodb' }}
       env:
         MONGODB_URI: ${{ secrets.MONGODB_URI }}
@@ -127,12 +103,12 @@ jobs:
       run: |
         python run.py
 
-    - name: simple mode transform
+    - name: simple mode transform # 极简模式转换
       if: ${{ env.SIMPLE_MODE == 'true' }}
       run: |
         python ./hexo_circle_of_friends/utils/simple_mode_transform_json.py
 
-    - name: simple mode push
+    - name: simple mode push # 推送极简模式
       if: ${{ env.SIMPLE_MODE == 'true' }}
       uses: github-actions-x/commit@v2.9
       with:
@@ -143,14 +119,5 @@ jobs:
         name: github-actions[bot]
         email: github-actions@noreply.github.com
 
-    - name: Set correct permissions for .git directory
-      run: |
-        sudo chown -R $USER:$USER .git
-
-    - name: Trigger redeploy on Vercel
-      run: |
-        git commit --allow-empty -m "Trigger Vercel Redeploy"
-        git push origin main
-
     - name: keep alive
-      uses: gautamkrishnar/keepalive-workflow@master
+      uses: gautamkrishnar/keepalive-workflow@master # keep workflows from being suspended when no commit for a long time
