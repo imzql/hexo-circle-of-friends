@@ -129,5 +129,10 @@ jobs:
         name: github-actions[bot]
         email: github-actions@noreply.github.com
 
+    - name: Trigger redeploy on Vercel # 触发 Vercel 重新部署
+      run: |
+        git commit --allow-empty -m "Trigger Vercel Redeploy"
+        git push origin main
+
     - name: keep alive
       uses: gautamkrishnar/keepalive-workflow@master
