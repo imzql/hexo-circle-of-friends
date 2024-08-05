@@ -77,16 +77,23 @@ jobs:
       run: |
         python ./hexo_circle_of_friends/run.py
 
+    - name: Remove existing data.db # 移除现有的 data.db 文件
+      if: ${{ env.STORAGE_TYPE == 'sqlite' }}
+      run: |
+        git rm data.db || echo "No data.db file to remove"
+        git commit -m "Remove data.db before generating a new one" || echo "No changes to commit"
+        git push origin main
+
     - name: Stash unstaged changes
       if: ${{ env.STORAGE_TYPE == 'sqlite' }}
       run: |
         git stash
         git pull --rebase
-        git stash pop
+        git stash pop || echo "No stash entries found"
         git add data.db
-        git commit -m "Resolved merge conflicts" || true
+        git commit -m "Resolved merge conflicts and updated data.db" || echo "No changes to commit"
 
-    - name: Push sqlite data # sqlite push
+    - name: Push new data.db # 推送新的 data.db 文件
       if: ${{ env.STORAGE_TYPE == 'sqlite' }}
       uses: github-actions-x/commit@v2.9
       with:
