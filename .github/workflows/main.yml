@@ -21,7 +21,7 @@ env:
   MYSQL_DB: ${{ secrets.MYSQL_DB }}
   GITHUB_NAME: ${{ secrets.GH_NAME }}
   GITHUB_EMAIL: ${{ secrets.GH_EMAIL }}
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
   MONGODB_URI: ${{ secrets.MONGODB_URI }}
   TZ: Asia/Shanghai
 
@@ -29,25 +29,25 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
+    - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Set up Python
+    - name: Set up Python environment
       uses: actions/setup-python@v3
       with:
         python-version: 3.11
         cache: "pip"
 
-    - name: Install requirements
+    - name: Install dependencies
       working-directory: ./hexo_circle_of_friends
       run: |
         pip install -r requirements.txt
 
-    - name: set env
+    - name: Set environment variables
       run: |
         echo "BASE_PATH=$(pwd)" >> $GITHUB_ENV && echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
 
-    - name: leancloud Update posts # leancloud
+    - name: leancloud Update posts
       if: ${{ env.STORAGE_TYPE == 'leancloud' }}
       env:
         APPID: ${{ secrets.APPID }}
@@ -58,7 +58,7 @@ jobs:
       run: |
         python run.py
 
-    - name: mysql Update posts # mysql
+    - name: mysql Update posts
       if: ${{ env.STORAGE_TYPE == 'mysql' }}
       env:
         MYSQL_USERNAME: ${{ secrets.MYSQL_USERNAME }}
@@ -69,7 +69,7 @@ jobs:
       run: |
         python run.py
 
-    - name: sqlite Update posts # sqlite
+    - name: sqlite Update posts
       if: ${{ env.STORAGE_TYPE == 'sqlite' || env.SIMPLE_MODE == 'true' }}
       env:
         PYTHONPATH: ${{ env.PYTHONPATH }}
@@ -77,7 +77,7 @@ jobs:
       run: |
         python ./hexo_circle_of_friends/run.py
 
-    - name: Remove existing data.db # 移除现有的 data.db 文件
+    - name: Remove existing data.db
       if: ${{ env.STORAGE_TYPE == 'sqlite' }}
       run: |
         git rm data.db || echo "No data.db file to remove"
@@ -93,7 +93,7 @@ jobs:
         git add data.db
         git commit -m "Resolved merge conflicts and updated data.db" || echo "No changes to commit"
 
-    - name: Push new data.db # 推送新的 data.db 文件
+    - name: Push new data.db
       if: ${{ env.STORAGE_TYPE == 'sqlite' }}
       uses: github-actions-x/commit@v2.9
       with:
@@ -105,7 +105,7 @@ jobs:
         name: ${{ env.GITHUB_NAME }}
         email: ${{ env.GITHUB_EMAIL }}
 
-    - name: mongodb Update posts # mongodb
+    - name: mongodb Update posts
       if: ${{ env.STORAGE_TYPE == 'mongodb' }}
       env:
         MONGODB_URI: ${{ secrets.MONGODB_URI }}
@@ -113,12 +113,12 @@ jobs:
       run: |
         python run.py
 
-    - name: simple mode transform # 极简模式转换
+    - name: simple mode transform
       if: ${{ env.SIMPLE_MODE == 'true' }}
       run: |
         python ./hexo_circle_of_friends/utils/simple_mode_transform_json.py
 
-    - name: simple mode push # 推送极简模式
+    - name: simple mode push
       if: ${{ env.SIMPLE_MODE == 'true' }}
       uses: github-actions-x/commit@v2.9
       with:
@@ -129,12 +129,16 @@ jobs:
         name: github-actions[bot]
         email: github-actions@noreply.github.com
 
+    - name: Set correct permissions for .git directory
+      run: |
+        sudo chown -R $USER:$USER .git
+
     - name: Configure Git identity
       run: |
         git config --global user.name "${{ env.GITHUB_NAME }}"
         git config --global user.email "${{ env.GITHUB_EMAIL }}"
 
-    - name: Trigger redeploy on Vercel # 触发 Vercel 重新部署
+    - name: Trigger redeploy on Vercel
       run: |
         git commit --allow-empty -m "Trigger Vercel Redeploy"
         git push origin main
