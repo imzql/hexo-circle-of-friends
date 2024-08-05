@@ -21,7 +21,7 @@ env:
   MYSQL_DB: ${{ secrets.MYSQL_DB }}
   GITHUB_NAME: ${{ secrets.GH_NAME }}
   GITHUB_EMAIL: ${{ secrets.GH_EMAIL }}
-  GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   MONGODB_URI: ${{ secrets.MONGODB_URI }}
   TZ: Asia/Shanghai
 
@@ -128,6 +128,11 @@ jobs:
         rebase: 'true'
         name: github-actions[bot]
         email: github-actions@noreply.github.com
+
+    - name: Configure Git identity
+      run: |
+        git config --global user.name "${{ env.GITHUB_NAME }}"
+        git config --global user.email "${{ env.GITHUB_EMAIL }}"
 
     - name: Trigger redeploy on Vercel # 触发 Vercel 重新部署
       run: |
