@@ -5,11 +5,11 @@ on:
     branches:
       - main
   schedule:
-    - cron: "0 0,6,12,18,21 * * *"
+    - cron: "0 * * * *"  # 每小时的第0分钟触发
   workflow_dispatch:
 
 env:
-  # 在这里查看需要添加的secert
+  # 在这里查看需要添加的secret
   # 通用配置
   SIMPLE_MODE: false # 极简模式是否开启
   STORAGE_TYPE: ${{ secrets.STORAGE_TYPE }} # 请修改为你的存储方式，默认为leancloud
